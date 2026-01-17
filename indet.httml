@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Counter ML</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  text-align: center;
+}
+
+h2 {
+  font-size: 28px;
+}
+
+.contenedor {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.buscador {
+  width: 100%;
+  max-width: 420px;
+}
+
+input, button {
+  width: 100%;
+  padding: 14px;
+  font-size: 18px;
+  margin: 10px 0;
+}
+
+button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#sugerencias {
+  display: none;
+  width: 200px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  text-align: left;
+}
+
+.sugerencia {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.sugerencia:hover {
+  background: #f0f0f0;
+}
+
+pre {
+  text-align: left;
+  font-size: 17px;
+  background: #f4f4f4;
+  padding: 15px;
+  border-radius: 6px;
+  max-width: 420px;
+  margin: 20px auto;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+  .contenedor {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #sugerencias {
+    width: 100%;
+    max-width: 420px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<h2>Counter Mobile Legends</h2>
+
+<div class="contenedor">
+
+  <div class="buscador">
+    <input
+      id="hero"
+      placeholder="Ej: Chou, Diggie"
+      onkeydown="if(event.key === 'Enter') buscar()"
+    >
+    <button onclick="buscar()">Buscar</button>
+  </div>
+
+  <div id="sugerencias"></div>
+
+</div>
+
+<pre id="resultado"></pre>
+
+<script>
+let data = {};
+let heroesOriginal = [];
+
+fetch("heroes.txt")
+  .then(res => res.text())
+  .then(texto => {
+    texto.split("\n").forEach(linea => {
+      if (!linea.trim()) return;
+
+      let [hero, counters] = linea.split(":");
+      if (!counters) return;
+
+      let key = hero.trim().toLowerCase();
+      data[key] = counters.split(",").map(c => c.trim());
+      heroesOriginal.push(hero.trim());
+    });
+  });
+
+const input = document.getElementById("hero");
+const box = document.getElementById("sugerencias");
+
+/* AUTOCOMPLETE INTELIGENTE */
+input.addEventListener("input", () => {
+  const valor = input.value;
+  const partes = valor.split(",");
+  const ultimo = partes[partes.length - 1].trim().toLowerCase();
+
+  box.innerHTML = "";
+
+  if (!ultimo) {
+    box.style.display = "none";
+    return;
+  }
+
+  const resultados = heroesOriginal.filter(h =>
+    h.toLowerCase().includes(ultimo)
+  );
+
+  if (!resultados.length) {
+    box.style.display = "none";
+    return;
+  }
+
+  box.style.display = "block";
+
+  resultados.forEach(h => {
+    const div = document.createElement("div");
+    div.className = "sugerencia";
+    div.textContent = h;
+
+    div.onclick = () => {
+      partes[partes.length - 1] = " " + h;
+      input.value = partes.join(",").replace(/^ /, "") + ", ";
+      box.style.display = "none";
+      input.focus();
+    };
+
+    box.appendChild(div);
+  });
+});
+
+function buscar() {
+  box.style.display = "none";
+
+  const heroes = input.value.split(",");
+  let salida = [];
+
+  heroes.forEach(h => {
+    let nombre = h.trim();
+    if (!nombre) return;
+
+    let key = nombre.toLowerCase();
+
+    if (!data[key]) {
+      salida.push(nombre + " → no encontrado");
+      return;
+    }
+
+    let counters = data[key];
+    let gana = [];
+
+    for (let hero in data) {
+      let lista = data[hero].map(c => c.toLowerCase());
+      if (lista.includes(key)) {
+        gana.push(hero);
+      }
+    }
+
+    salida.push(
+      "🔴 Counters: " + counters.join(", ") +
+      "\n\n🟢 Gana a: " + (gana.length ? gana.join(", ") : "Ninguno")
+    );
+  });
+
+  document.getElementById("resultado").innerText = salida.join("\n\n");
+}
+</script>
+
+</body>
+</html>
